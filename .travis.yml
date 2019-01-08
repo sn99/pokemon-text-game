@@ -1,20 +1,19 @@
-sudo: true
+sudo: required
 
 language: rust
 
 rust:
-- nightly
+- stable
 
 os:
 - linux
+
+before_install:
+- sudo apt update
 
 install:
 - sudo apt install pkg-config
 - sudo apt install libasound2-dev
 
-before_script:
-- rustup component add rustfmt-preview
-
 script:
-- cargo fmt --all -- --check
 - cargo build -v
