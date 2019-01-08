@@ -1,0 +1,36 @@
+{
+  "pokemons": [
+    {
+      "name": "Pikachu",
+      "moves": [
+        "IronTail",
+        "ElectricBall",
+        "ElectricShock",
+        "Tackle"
+      ],
+      "health": 400,
+      "type": 1
+    },
+    {
+      "name": "Charlizard",
+      "moves": [
+        "Fire Breath",
+        "Dragon Claw",
+        "Tackle"
+      ],
+      "health": 600,
+      "type": 5
+    },
+    {
+      "name": "Siddharth",
+      "moves": [
+        "KillShot",
+        "MegaPunch",
+        "SarcasticComments",
+        "DeadEye"
+      ],
+      "health": 690,
+      "type": 0
+    }
+  ]
+}
