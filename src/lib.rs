@@ -22,6 +22,7 @@ SOFTWARE.
 */
 
 pub mod extra;
+
 extern crate rand;
 
 extern crate serde;
