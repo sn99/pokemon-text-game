@@ -10,7 +10,7 @@
 
 ## For Windows
 1. Clone the [repository](https://github.com/sn99/pokemon-text-game/archive/master.zip) (extract the contents) or just download the [resources](https://github.com/sn99/pokemon-text-game/tree/master/resources) file as it is (a file name resources that has both track.mp3 and pokemons.json)
-2. [Download](https://github.com/sn99/pokemon-text-game/releases/download/v0.3/pokemon-text-game.exe) the executable
+2. [Download](https://github.com/sn99/pokemon-text-game/releases/download/v1.0.0/pokemon-text-game.exe) the executable
 3. Put "resources" folder and "pokemon-text-game.exe" in the same folder and run the ".exe" file to play the game :)
 
 ## Building on linux for windows
