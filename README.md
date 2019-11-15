@@ -1,6 +1,8 @@
 # CLI based basic pokemon game
 [![Build Status](https://travis-ci.com/sn99/pokemon-text-game.svg?branch=master)](https://travis-ci.com/sn99/pokemon-text-game)
 [![Build status](https://ci.appveyor.com/api/projects/status/94r186vjkirtxjak?svg=true)](https://ci.appveyor.com/project/sn99/pokemon-text-game)
+[![Dependabot Status](https://api.dependabot.com/badges/status?host=github&repo=sn99/pokemon-text-game)](https://dependabot.com)
+
 ## For linux
 1. Clone the [repository](https://github.com/sn99/pokemon-text-game/archive/master.zip) and extract the contents in the same file
 2. Install the following packages
