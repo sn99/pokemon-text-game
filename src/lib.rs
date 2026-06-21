@@ -23,20 +23,14 @@ SOFTWARE.
 
 pub mod extra;
 
-extern crate rand;
-
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-// for #[derive(Serialize, Deserialize)]
-extern crate serde_json;
-
 use std::error::Error;
 use std::fs::{self, File};
 use std::path::Path;
 
-use crate::extra::*;
 use rand::Rng;
+use serde::{Deserialize, Serialize};
+
+pub const TEAM_PATH: &str = "resources/pokemons.json";
 
 pub fn write_team_to_file<P: AsRef<Path>>(
     path: P,
@@ -52,13 +46,21 @@ pub fn read_team_from_file<P: AsRef<Path>>(path: P) -> Result<PokemonsList, Box<
     Ok(team)
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PokemonsList {
     #[serde(rename = "pokemons")]
     pub pokeball: Vec<Pokemon>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+impl Default for PokemonsList {
+    fn default() -> Self {
+        Self {
+            pokeball: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Pokemon {
     pub name: String,
     #[serde(rename = "moves")]
@@ -68,86 +70,270 @@ pub struct Pokemon {
     pub pokemon_type: i64,
 }
 
+/// Result of applying an attack for battle UI / logging.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AttackResult {
+    pub flavor: String,
+    pub damage_dealt: i64,
+    pub critical: bool,
+    pub blocked: bool,
+}
+
 impl Pokemon {
+    /// Build a Pokemon without interactive input.
+    pub fn with_stats(
+        name: impl Into<String>,
+        moves_name: Vec<String>,
+        health: i64,
+        pokemon_type: i64,
+    ) -> Self {
+        Pokemon {
+            name: name.into(),
+            moves_name,
+            health,
+            pokemon_type,
+        }
+    }
+
     pub fn edit(&mut self, moves: Vec<String>, health: i64) {
         self.health = health;
         self.moves_name = moves;
     }
 
-    pub fn new() -> Pokemon {
-        println!("\n========================\nEnter name of pokemon : ");
-        let mut temp_name = input();
-        let size_name = temp_name.len();
-
-        temp_name.truncate(size_name - 1);
-
-        println!("Enter moves : ");
-        let temp_moves = input();
-        let moves: Vec<String> = temp_moves
-            .split_whitespace()
-            .map(|s| s.to_string())
-            .collect();
-
-        println!("Enter health : ");
-        let temp_health = i64_input();
-
-        println!("Enter pokemon type : ");
-        let temp_type = i64_input();
-
-        Pokemon {
-            name: temp_name.to_owned(),
-            moves_name: moves.to_owned(),
-            health: temp_health.to_owned(),
-            pokemon_type: temp_type.to_owned(),
-        }
+    pub fn edit_full(&mut self, name: String, moves: Vec<String>, health: i64, pokemon_type: i64) {
+        self.name = name;
+        self.moves_name = moves;
+        self.health = health;
+        self.pokemon_type = pokemon_type;
     }
 
-    pub fn choose_attack(&self) -> usize {
-        let mut q = 1;
-        for i in &self.moves_name {
-            println!("{}.{}", q, i);
-            q = q + 1;
-        }
-
-        let choice = i64_input();
-
-        choice as usize
-    }
-
-    pub fn damage(&mut self, chance: i32) {
+    /// Apply randomized combat damage. `critical` when chance == 0 (same as original).
+    /// Returns flavor text + damage; does not print.
+    pub fn take_hit(&mut self, critical_chance: i32) -> AttackResult {
         let mut rng = rand::thread_rng();
-        let health_lost = rng.gen_range(80, 100);
-
-        random_message();
-        if chance == 0 {
-            println!("\n{} takes critical damage\n", self.name);
-            self.health = self.health - health_lost - rng.gen_range(10, 30);
+        let base = rng.gen_range(80..100);
+        let critical = critical_chance == 0;
+        let extra = if critical {
+            rng.gen_range(10..30)
         } else {
-            self.health = self.health - health_lost;
+            0
+        };
+        let damage_dealt = base + extra;
+        self.health -= damage_dealt;
+        AttackResult {
+            flavor: random_message_str(),
+            damage_dealt,
+            critical,
+            blocked: false,
         }
     }
 
+    /// Apply a fixed damage amount (deterministic; useful in tests).
+    pub fn apply_damage(&mut self, amount: i64, critical: bool) {
+        if critical {
+            self.health -= amount + 20;
+        } else {
+            self.health -= amount;
+        }
+    }
+
+    /// Returns true when this Pokemon can no longer battle (health <= 0).
     pub fn health_check(&self) -> bool {
-        if self.health <= 0 {
-            println!("{} is unable to battle ...", self.name);
-            return true;
-        } else {
-            return false;
-        }
+        self.is_fainted()
     }
 
-    pub fn print_details(&self) {
-        println!("{:#?}", self);
+    pub fn is_fainted(&self) -> bool {
+        self.health <= 0
+    }
+
+    pub fn health_ratio(&self, max_health: i64) -> f64 {
+        if max_health <= 0 {
+            return 0.0;
+        }
+        (self.health.max(0) as f64 / max_health as f64).clamp(0.0, 1.0)
     }
 }
 
-pub fn random_message() {
+pub fn random_message_str() -> String {
     let mut rng = rand::thread_rng();
+    match rng.gen_range(0..4) {
+        0 => "We can do it!".into(),
+        1 => "Never give up!".into(),
+        2 => "Be the very best!".into(),
+        _ => "Till the end we shall dance!".into(),
+    }
+}
 
-    match rng.gen_range(0, 4) {
-        0 => println!("\nWE can do it"),
-        1 => println!("\nNever give up"),
-        2 => println!("\nBe the very best"),
-        _ => println!("\nTill the end we shall dance"),
+/// Roll whether an attack is blocked (~1/8, matching original).
+pub fn roll_block() -> bool {
+    let mut rng = rand::thread_rng();
+    rng.gen_range(0..8) == 0
+}
+
+/// Roll critical chance (~1/9, matching original).
+pub fn roll_critical_chance() -> i32 {
+    let mut rng = rand::thread_rng();
+    rng.gen_range(0..9)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::extra::{is_valid_choice, parse_i64, parse_moves};
+    use std::io::Write;
+
+    fn sample_pikachu() -> Pokemon {
+        Pokemon::with_stats(
+            "Pikachu",
+            vec![
+                "IronTail".into(),
+                "ElectricBall".into(),
+                "ElectricShock".into(),
+                "Tackle".into(),
+            ],
+            400,
+            1,
+        )
+    }
+
+    #[test]
+    fn pokemon_edit_updates_health_and_moves() {
+        let mut p = sample_pikachu();
+        p.edit(vec!["Thunder".into(), "QuickAttack".into()], 250);
+        assert_eq!(p.health, 250);
+        assert_eq!(p.moves_name, vec!["Thunder", "QuickAttack"]);
+        assert_eq!(p.name, "Pikachu");
+    }
+
+    #[test]
+    fn apply_damage_normal_and_critical() {
+        let mut p = sample_pikachu();
+        p.apply_damage(90, false);
+        assert_eq!(p.health, 310);
+
+        p.apply_damage(90, true);
+        assert_eq!(p.health, 200); // 310 - 90 - 20
+    }
+
+    #[test]
+    fn is_fainted_when_health_depleted() {
+        let mut p = sample_pikachu();
+        assert!(!p.is_fainted());
+        p.health = 0;
+        assert!(p.is_fainted());
+        p.health = -5;
+        assert!(p.is_fainted());
+    }
+
+    #[test]
+    fn health_check_returns_true_only_when_fainted() {
+        let mut p = sample_pikachu();
+        assert!(!p.health_check());
+        p.health = 1;
+        assert!(!p.health_check());
+        p.health = 0;
+        assert!(p.health_check());
+    }
+
+    #[test]
+    fn take_hit_reduces_health_and_reports_damage() {
+        let mut p = sample_pikachu();
+        let before = p.health;
+        let r = p.take_hit(1);
+        assert!(!r.critical);
+        assert!(!r.blocked);
+        assert!(r.damage_dealt >= 80 && r.damage_dealt < 100);
+        assert_eq!(p.health, before - r.damage_dealt);
+    }
+
+    #[test]
+    fn health_ratio_clamps() {
+        let mut p = sample_pikachu();
+        assert!((p.health_ratio(400) - 1.0).abs() < f64::EPSILON);
+        p.health = 200;
+        assert!((p.health_ratio(400) - 0.5).abs() < f64::EPSILON);
+        p.health = -10;
+        assert!((p.health_ratio(400) - 0.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn serde_roundtrip_preserves_pokemon_fields() {
+        let team = PokemonsList {
+            pokeball: vec![sample_pikachu()],
+        };
+        let json = serde_json::to_string(&team).expect("serialize");
+        let back: PokemonsList = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back, team);
+        assert!(json.contains("\"moves\""));
+        assert!(json.contains("\"type\""));
+        assert!(json.contains("\"pokemons\""));
+    }
+
+    #[test]
+    fn read_and_write_team_file_roundtrip() {
+        let dir = std::env::temp_dir().join(format!(
+            "pokemon-text-game-test-{}",
+            std::process::id()
+        ));
+        let _ = fs::create_dir_all(&dir);
+        let path = dir.join("team.json");
+
+        let team = PokemonsList {
+            pokeball: vec![
+                sample_pikachu(),
+                Pokemon::with_stats("Bulbasaur", vec!["VineWhip".into()], 450, 2),
+            ],
+        };
+
+        write_team_to_file(&path, &team).expect("write");
+        let loaded = read_team_from_file(&path).expect("read");
+        assert_eq!(loaded, team);
+        assert_eq!(loaded.pokeball.len(), 2);
+        assert_eq!(loaded.pokeball[1].name, "Bulbasaur");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn read_bundled_pokemons_json_if_present() {
+        let path = Path::new("resources/pokemons.json");
+        if !path.exists() {
+            return;
+        }
+        let team = read_team_from_file(path).expect("read resources/pokemons.json");
+        assert!(!team.pokeball.is_empty());
+        assert_eq!(team.pokeball[0].name, "Pikachu");
+        assert!(team.pokeball[0].health > 0);
+        assert!(!team.pokeball[0].moves_name.is_empty());
+    }
+
+    #[test]
+    fn read_team_from_missing_file_errors() {
+        let err = read_team_from_file("/nonexistent/pokemon-team-xyz.json");
+        assert!(err.is_err());
+    }
+
+    #[test]
+    fn read_team_rejects_invalid_json() {
+        let dir = std::env::temp_dir().join(format!(
+            "pokemon-text-game-bad-json-{}",
+            std::process::id()
+        ));
+        let _ = fs::create_dir_all(&dir);
+        let path = dir.join("bad.json");
+        {
+            let mut f = File::create(&path).unwrap();
+            writeln!(f, "{{ not valid json").unwrap();
+        }
+        let err = read_team_from_file(&path);
+        assert!(err.is_err());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn invalid_text_input_does_not_panic_on_parse() {
+        assert!(parse_i64("none").is_err());
+        assert!(!is_valid_choice(0, 3));
+        assert!(parse_moves("a b").len() == 2);
     }
 }
