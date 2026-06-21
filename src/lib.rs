@@ -41,23 +41,14 @@ pub fn write_team_to_file<P: AsRef<Path>>(
 }
 
 pub fn read_team_from_file<P: AsRef<Path>>(path: P) -> Result<PokemonsList, Box<dyn Error>> {
-    let file = File::open(path)?;
-    let team = serde_json::from_reader(file)?;
+    let team = serde_json::from_reader(File::open(path)?)?;
     Ok(team)
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PokemonsList {
     #[serde(rename = "pokemons")]
     pub pokeball: Vec<Pokemon>,
-}
-
-impl Default for PokemonsList {
-    fn default() -> Self {
-        Self {
-            pokeball: Vec::new(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -80,14 +71,13 @@ pub struct AttackResult {
 }
 
 impl Pokemon {
-    /// Build a Pokemon without interactive input.
     pub fn with_stats(
         name: impl Into<String>,
         moves_name: Vec<String>,
         health: i64,
         pokemon_type: i64,
     ) -> Self {
-        Pokemon {
+        Self {
             name: name.into(),
             moves_name,
             health,
@@ -107,18 +97,11 @@ impl Pokemon {
         self.pokemon_type = pokemon_type;
     }
 
-    /// Apply randomized combat damage. `critical` when chance == 0 (same as original).
-    /// Returns flavor text + damage; does not print.
+    /// Apply randomized combat damage. `critical` when chance == 0 (original behavior).
     pub fn take_hit(&mut self, critical_chance: i32) -> AttackResult {
         let mut rng = rand::thread_rng();
-        let base = rng.gen_range(80..100);
         let critical = critical_chance == 0;
-        let extra = if critical {
-            rng.gen_range(10..30)
-        } else {
-            0
-        };
-        let damage_dealt = base + extra;
+        let damage_dealt = rng.gen_range(80..100) + if critical { rng.gen_range(10..30) } else { 0 };
         self.health -= damage_dealt;
         AttackResult {
             flavor: random_message_str(),
@@ -128,16 +111,12 @@ impl Pokemon {
         }
     }
 
-    /// Apply a fixed damage amount (deterministic; useful in tests).
+    /// Fixed damage (deterministic; useful in tests).
     pub fn apply_damage(&mut self, amount: i64, critical: bool) {
-        if critical {
-            self.health -= amount + 20;
-        } else {
-            self.health -= amount;
-        }
+        self.health -= amount + if critical { 20 } else { 0 };
     }
 
-    /// Returns true when this Pokemon can no longer battle (health <= 0).
+    /// Alias kept for older call sites / tests.
     pub fn health_check(&self) -> bool {
         self.is_fainted()
     }
@@ -155,8 +134,7 @@ impl Pokemon {
 }
 
 pub fn random_message_str() -> String {
-    let mut rng = rand::thread_rng();
-    match rng.gen_range(0..4) {
+    match rand::thread_rng().gen_range(0..4) {
         0 => "We can do it!".into(),
         1 => "Never give up!".into(),
         2 => "Be the very best!".into(),
@@ -164,16 +142,14 @@ pub fn random_message_str() -> String {
     }
 }
 
-/// Roll whether an attack is blocked (~1/8, matching original).
+/// ~1/8 block chance (original).
 pub fn roll_block() -> bool {
-    let mut rng = rand::thread_rng();
-    rng.gen_range(0..8) == 0
+    rand::thread_rng().gen_range(0..8) == 0
 }
 
-/// Roll critical chance (~1/9, matching original).
+/// ~1/9 critical roll; `0` means critical (original).
 pub fn roll_critical_chance() -> i32 {
-    let mut rng = rand::thread_rng();
-    rng.gen_range(0..9)
+    rand::thread_rng().gen_range(0..9)
 }
 
 #[cfg(test)]
