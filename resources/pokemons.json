@@ -3,23 +3,90 @@
     {
       "name": "Pikachu",
       "moves": [
-        "IronTail",
-        "ElectricBall",
-        "ElectricShock",
-        "Tackle"
+        "Growl",
+        "ThunderShock",
+        "TailWhip",
+        "QuickAttack"
       ],
       "health": 400,
       "type": 1
     },
     {
-      "name": "Charlizard",
+      "name": "Charizard",
       "moves": [
-        "Fire Breath",
-        "Dragon Claw",
-        "Tackle"
+        "WingAttack",
+        "AirSlash",
+        "Scratch",
+        "Leer"
       ],
       "health": 600,
-      "type": 5
+      "type": 4
+    },
+    {
+      "name": "Blastoise",
+      "moves": [
+        "FlashCannon",
+        "Tackle",
+        "TailWhip",
+        "WaterGun"
+      ],
+      "health": 620,
+      "type": 3
+    },
+    {
+      "name": "Venusaur",
+      "moves": [
+        "PetalDance",
+        "PetalBlizzard",
+        "VineWhip",
+        "Tackle"
+      ],
+      "health": 610,
+      "type": 2
+    },
+    {
+      "name": "Gengar",
+      "moves": [
+        "ShadowPunch",
+        "NightShade",
+        "ConfuseRay",
+        "Lick"
+      ],
+      "health": 520,
+      "type": 8
+    },
+    {
+      "name": "Gyarados",
+      "moves": [
+        "Bite",
+        "WaterPulse",
+        "Leer",
+        "HydroPump"
+      ],
+      "health": 580,
+      "type": 3
+    },
+    {
+      "name": "Snorlax",
+      "moves": [
+        "Headbutt",
+        "Amnesia",
+        "Rest",
+        "Tackle"
+      ],
+      "health": 700,
+      "type": 0
+    },
+    {
+      "name": "Mewtwo",
+      "moves": [
+        "Disable",
+        "Confusion",
+        "Psychic",
+        "Swift"
+      ],
+      "health": 720,
+      "type": 6
     },
     {
       "name": "Siddharth",

@@ -1,26 +1,4 @@
-/*MIT License
-
-Copyright (c) 2018 sn99
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-*/
-
+/* MIT — sn99 */
 mod app;
 
 use std::time::Duration;
@@ -28,13 +6,27 @@ use std::time::Duration;
 use color_eyre::Result;
 use crossterm::event::{self, Event};
 
-use app::{draw, handle_key, App, BackgroundMusic};
+use app::{draw, handle_key, App, AudioManager, MusicTrack};
 
-fn run(mut terminal: ratatui::DefaultTerminal, mut app: App) -> Result<()> {
+fn run(
+    mut terminal: ratatui::DefaultTerminal,
+    mut app: App,
+    audio: &mut Option<AudioManager>,
+) -> Result<()> {
     loop {
+        app.tick();
+        if let Some(ref mut a) = audio {
+            if let Some(v) = app.pending_audio_volume.take() {
+                a.set_volume(v);
+            }
+            if let Some(en) = app.pending_audio_enabled.take() {
+                a.set_enabled(en);
+            }
+        }
+
         terminal.draw(|frame| draw(&mut app, frame))?;
 
-        if event::poll(Duration::from_millis(100))? {
+        if event::poll(Duration::from_millis(80))? {
             if let Event::Key(key) = event::read()? {
                 handle_key(&mut app, key);
             }
@@ -50,11 +42,17 @@ fn run(mut terminal: ratatui::DefaultTerminal, mut app: App) -> Result<()> {
 fn main() -> Result<()> {
     color_eyre::install()?;
 
-    let _music = BackgroundMusic::try_start();
+    // Start original track.mp3 BGM (same as v1 behaviour)
+    let mut audio = AudioManager::try_start();
 
     let terminal = ratatui::init();
     let app = App::new();
-    let result = run(terminal, app);
+    if let Some(ref mut a) = audio {
+        a.set_enabled(app.save.settings.music_enabled);
+        a.set_volume(app.save.settings.music_volume);
+        let _ = MusicTrack::Title; // keep import used for API surface
+    }
+    let result = run(terminal, app, &mut audio);
     ratatui::restore();
     result
 }

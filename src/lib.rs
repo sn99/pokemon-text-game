@@ -1,6 +1,6 @@
 /*MIT License
 
-Copyright (c) 2018 sn99
+Copyright (c) 2018-2026 sn99
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -21,142 +21,40 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+//! # Pokemon Text Game — library crate
+//!
+//! Modular terminal Pokemon battler with:
+//! - Species / moves / types database (PokeAPI-compatible shapes)
+//! - Type-effective battle engine
+//! - ASCII battle sprites
+//! - Save games, inventory, wild encounters
+//!
+//! Binary entry point lives in `main.rs` (ratatui TUI).
+
+pub mod ascii;
+pub mod audio;
+pub mod battle;
+pub mod data;
 pub mod extra;
+pub mod pokemon;
+pub mod save;
+pub mod util;
+pub mod world;
 
-use std::error::Error;
-use std::fs::{self, File};
-use std::path::Path;
+// ---- Backward-compatible re-exports (v1 API) ----
 
-use rand::Rng;
-use serde::{Deserialize, Serialize};
-
-pub const TEAM_PATH: &str = "resources/pokemons.json";
-
-pub fn write_team_to_file<P: AsRef<Path>>(
-    path: P,
-    team: &PokemonsList,
-) -> Result<(), Box<dyn Error>> {
-    fs::write(path, serde_json::to_string_pretty(team)?)?;
-    Ok(())
-}
-
-pub fn read_team_from_file<P: AsRef<Path>>(path: P) -> Result<PokemonsList, Box<dyn Error>> {
-    let team = serde_json::from_reader(File::open(path)?)?;
-    Ok(team)
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
-pub struct PokemonsList {
-    #[serde(rename = "pokemons")]
-    pub pokeball: Vec<Pokemon>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct Pokemon {
-    pub name: String,
-    #[serde(rename = "moves")]
-    pub moves_name: Vec<String>,
-    pub health: i64,
-    #[serde(rename = "type")]
-    pub pokemon_type: i64,
-}
-
-/// Result of applying an attack for battle UI / logging.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AttackResult {
-    pub flavor: String,
-    pub damage_dealt: i64,
-    pub critical: bool,
-    pub blocked: bool,
-}
-
-impl Pokemon {
-    pub fn with_stats(
-        name: impl Into<String>,
-        moves_name: Vec<String>,
-        health: i64,
-        pokemon_type: i64,
-    ) -> Self {
-        Self {
-            name: name.into(),
-            moves_name,
-            health,
-            pokemon_type,
-        }
-    }
-
-    pub fn edit(&mut self, moves: Vec<String>, health: i64) {
-        self.health = health;
-        self.moves_name = moves;
-    }
-
-    pub fn edit_full(&mut self, name: String, moves: Vec<String>, health: i64, pokemon_type: i64) {
-        self.name = name;
-        self.moves_name = moves;
-        self.health = health;
-        self.pokemon_type = pokemon_type;
-    }
-
-    /// Apply randomized combat damage. `critical` when chance == 0 (original behavior).
-    pub fn take_hit(&mut self, critical_chance: i32) -> AttackResult {
-        let mut rng = rand::thread_rng();
-        let critical = critical_chance == 0;
-        let damage_dealt = rng.gen_range(80..100) + if critical { rng.gen_range(10..30) } else { 0 };
-        self.health -= damage_dealt;
-        AttackResult {
-            flavor: random_message_str(),
-            damage_dealt,
-            critical,
-            blocked: false,
-        }
-    }
-
-    /// Fixed damage (deterministic; useful in tests).
-    pub fn apply_damage(&mut self, amount: i64, critical: bool) {
-        self.health -= amount + if critical { 20 } else { 0 };
-    }
-
-    /// Alias kept for older call sites / tests.
-    pub fn health_check(&self) -> bool {
-        self.is_fainted()
-    }
-
-    pub fn is_fainted(&self) -> bool {
-        self.health <= 0
-    }
-
-    pub fn health_ratio(&self, max_health: i64) -> f64 {
-        if max_health <= 0 {
-            return 0.0;
-        }
-        (self.health.max(0) as f64 / max_health as f64).clamp(0.0, 1.0)
-    }
-}
-
-pub fn random_message_str() -> String {
-    match rand::thread_rng().gen_range(0..4) {
-        0 => "We can do it!".into(),
-        1 => "Never give up!".into(),
-        2 => "Be the very best!".into(),
-        _ => "Till the end we shall dance!".into(),
-    }
-}
-
-/// ~1/8 block chance (original).
-pub fn roll_block() -> bool {
-    rand::thread_rng().gen_range(0..8) == 0
-}
-
-/// ~1/9 critical roll; `0` means critical (original).
-pub fn roll_critical_chance() -> i32 {
-    rand::thread_rng().gen_range(0..9)
-}
+pub use battle::engine::{random_flavor as random_message_str, roll_block, roll_critical_chance, AttackResult};
+pub use data::{read_team_from_file, write_team_to_file, TEAM_PATH};
+pub use pokemon::{LegacyPokemon, Pokemon, PokemonInstance, PokemonsList};
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::extra::{is_valid_choice, parse_i64, parse_moves};
+    use crate::pokemon::LegacyPokemon;
+    use std::fs::{self, File};
     use std::io::Write;
+    use std::path::Path;
 
     fn sample_pikachu() -> Pokemon {
         Pokemon::with_stats(
@@ -186,9 +84,8 @@ mod tests {
         let mut p = sample_pikachu();
         p.apply_damage(90, false);
         assert_eq!(p.health, 310);
-
         p.apply_damage(90, true);
-        assert_eq!(p.health, 200); // 310 - 90 - 20
+        assert_eq!(p.health, 200);
     }
 
     #[test]
@@ -253,20 +150,17 @@ mod tests {
         ));
         let _ = fs::create_dir_all(&dir);
         let path = dir.join("team.json");
-
         let team = PokemonsList {
             pokeball: vec![
                 sample_pikachu(),
-                Pokemon::with_stats("Bulbasaur", vec!["VineWhip".into()], 450, 2),
+                LegacyPokemon::with_stats("Bulbasaur", vec!["VineWhip".into()], 450, 2),
             ],
         };
-
         write_team_to_file(&path, &team).expect("write");
         let loaded = read_team_from_file(&path).expect("read");
         assert_eq!(loaded, team);
         assert_eq!(loaded.pokeball.len(), 2);
         assert_eq!(loaded.pokeball[1].name, "Bulbasaur");
-
         let _ = fs::remove_dir_all(&dir);
     }
 
@@ -311,5 +205,17 @@ mod tests {
         assert!(parse_i64("none").is_err());
         assert!(!is_valid_choice(0, 3));
         assert!(parse_moves("a b").len() == 2);
+    }
+
+    #[test]
+    fn v2_instance_and_type_chart_integrated() {
+        let p = PokemonInstance::from_species_name("Charizard", 50).unwrap();
+        assert_eq!(p.types.len(), 2);
+        let mult = crate::pokemon::type_effectiveness(
+            crate::pokemon::ElementType::Water,
+            &p.types,
+        );
+        assert!((mult - 2.0).abs() < f64::EPSILON); // Water vs Fire/Flying = 2 * 1? Wait Flying is neutral to water = 2
+        assert!((mult - 2.0).abs() < f64::EPSILON);
     }
 }
