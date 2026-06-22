@@ -1,58 +1,21 @@
-/* MIT — sn99 */
-mod app;
+/* MIT — sn99 — Pokemon 2D */
 
-use std::time::Duration;
+use macroquad::prelude::*;
 
-use color_eyre::Result;
-use crossterm::event::{self, Event};
+use pokemon_text_game::game::run_game;
 
-use app::{draw, handle_key, App, AudioManager, MusicTrack};
-
-fn run(
-    mut terminal: ratatui::DefaultTerminal,
-    mut app: App,
-    audio: &mut Option<AudioManager>,
-) -> Result<()> {
-    loop {
-        app.tick();
-        if let Some(ref mut a) = audio {
-            if let Some(v) = app.pending_audio_volume.take() {
-                a.set_volume(v);
-            }
-            if let Some(en) = app.pending_audio_enabled.take() {
-                a.set_enabled(en);
-            }
-        }
-
-        terminal.draw(|frame| draw(&mut app, frame))?;
-
-        if event::poll(Duration::from_millis(80))? {
-            if let Event::Key(key) = event::read()? {
-                handle_key(&mut app, key);
-            }
-        }
-
-        if app.should_quit {
-            break;
-        }
+fn window_conf() -> Conf {
+    Conf {
+        window_title: "Pokémon 2D — v3.2".to_owned(),
+        window_width: 1024,
+        window_height: 680,
+        high_dpi: true,
+        sample_count: 4,
+        ..Default::default()
     }
-    Ok(())
 }
 
-fn main() -> Result<()> {
-    color_eyre::install()?;
-
-    // Start original track.mp3 BGM (same as v1 behaviour)
-    let mut audio = AudioManager::try_start();
-
-    let terminal = ratatui::init();
-    let app = App::new();
-    if let Some(ref mut a) = audio {
-        a.set_enabled(app.save.settings.music_enabled);
-        a.set_volume(app.save.settings.music_volume);
-        let _ = MusicTrack::Title; // keep import used for API surface
-    }
-    let result = run(terminal, app, &mut audio);
-    ratatui::restore();
-    result
+#[macroquad::main(window_conf)]
+async fn main() {
+    run_game().await;
 }
