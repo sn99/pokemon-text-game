@@ -116,12 +116,12 @@ impl Pokemon {
 
     pub fn damage(&mut self, chance: i32) {
         let mut rng = rand::thread_rng();
-        let health_lost = rng.gen_range(80, 100);
+        let health_lost = rng.gen_range(80..100);
 
         random_message();
         if chance == 0 {
             println!("\n{} takes critical damage\n", self.name);
-            self.health = self.health - health_lost - rng.gen_range(10, 30);
+            self.health = self.health - health_lost - rng.gen_range(10..30);
         } else {
             self.health = self.health - health_lost;
         }
@@ -144,7 +144,7 @@ impl Pokemon {
 pub fn random_message() {
     let mut rng = rand::thread_rng();
 
-    match rng.gen_range(0, 4) {
+    match rng.gen_range(0..4) {
         0 => println!("\nWE can do it"),
         1 => println!("\nNever give up"),
         2 => println!("\nBe the very best"),
