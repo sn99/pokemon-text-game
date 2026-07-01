@@ -201,21 +201,21 @@ fn game_play() {
             let mut rng = rand::thread_rng();
 
             let mut computer_pokemon =
-                pokemon_vec[rng.gen_range(1, total_pokemons + 1) - 1].clone();
+                pokemon_vec[rng.gen_range(1..total_pokemons + 1) - 1].clone();
             println!("\nThe computer chooses {}", computer_pokemon.name);
 
-            let coin_tossed = rng.gen_range(0, 2);
+            let coin_tossed = rng.gen_range(0..2);
 
             if coin_tossed == 0 {
                 println!("Challenger attacks first !!!\n");
                 loop {
-                    let dodge_chance = rng.gen_range(0, 8);
+                    let dodge_chance = rng.gen_range(0..8);
                     let player_choice = player_pokemon.choose_attack();
 
                     if dodge_chance == 0 {
                         println!("{} blocked it !!!", computer_pokemon.name);
                     } else {
-                        let critical_chance = rng.gen_range(0, 9);
+                        let critical_chance = rng.gen_range(0..9);
 
                         println!(
                             "\nPlayer uses {}",
@@ -236,17 +236,17 @@ fn game_play() {
                                 game_play();
                             }
                         } else {
-                            let dodge_chance = rng.gen_range(0, 9);
+                            let dodge_chance = rng.gen_range(0..9);
                             println!("\nComputer's {} attacks now !!!", computer_pokemon.name);
                             if dodge_chance == 0 {
                                 println!("Player's {} blocked it !!!", player_pokemon.name);
                             } else {
-                                let critical_chance = rng.gen_range(0, 8);
+                                let critical_chance = rng.gen_range(0..8);
                                 println!(
                                     "{} uses {}",
                                     computer_pokemon.name,
                                     computer_pokemon.moves_name
-                                        [rng.gen_range(0, computer_pokemon.moves_name.len())]
+                                        [rng.gen_range(0..computer_pokemon.moves_name.len())]
                                 );
                                 player_pokemon.damage(critical_chance);
 
@@ -273,17 +273,17 @@ fn game_play() {
                 println!("Computer attacks first !!!");
 
                 loop {
-                    let dodge_chance = rng.gen_range(0, 8);
+                    let dodge_chance = rng.gen_range(0..8);
 
                     if dodge_chance == 0 {
                         println!("Player's {} blocked it !!!", player_pokemon.name);
                     } else {
-                        let critical_chance = rng.gen_range(0, 9);
+                        let critical_chance = rng.gen_range(0..9);
                         println!(
                             "Computer's {} uses {}\n",
                             computer_pokemon.name,
                             computer_pokemon.moves_name
-                                [rng.gen_range(0, computer_pokemon.moves_name.len())]
+                                [rng.gen_range(0..computer_pokemon.moves_name.len())]
                         );
                         player_pokemon.damage(critical_chance);
 
@@ -300,13 +300,13 @@ fn game_play() {
                                 game_play();
                             }
                         } else {
-                            let dodge_chance = rng.gen_range(0, 9);
+                            let dodge_chance = rng.gen_range(0..9);
                             let player_choice = player_pokemon.choose_attack();
 
                             if dodge_chance == 0 {
                                 println!("{} blocked it !!!", computer_pokemon.name);
                             } else {
-                                let critical_chance = rng.gen_range(0, 9);
+                                let critical_chance = rng.gen_range(0..9);
 
                                 println!(
                                     "Player uses {}",
@@ -343,19 +343,19 @@ fn game_play() {
             let mut player2_pokemon = pokemon_vec[choice as usize - 1].clone();
 
             let mut rng = rand::thread_rng();
-            let coin_tossed = rng.gen_range(0, 2);
+            let coin_tossed = rng.gen_range(0..2);
 
             if coin_tossed == 0 {
                 println!("Player 1 attacks first !!!");
 
                 loop {
-                    let dodge_chance = rng.gen_range(0, 8);
+                    let dodge_chance = rng.gen_range(0..8);
                     let player1_choice = player1_pokemon.choose_attack();
 
                     if dodge_chance == 0 {
                         println!("Player's 2 {} blocked it !!!", player2_pokemon.name);
                     } else {
-                        let critical_chance = rng.gen_range(0, 9);
+                        let critical_chance = rng.gen_range(0..9);
 
                         println!(
                             "\nPlayer 1 uses {}",
@@ -372,13 +372,13 @@ fn game_play() {
                             let _exit = input();
                             std::process::exit(1);
                         } else {
-                            let dodge_chance = rng.gen_range(0, 9);
+                            let dodge_chance = rng.gen_range(0..9);
                             println!("\nPlayers's 2 {} attacks now !!!", player2_pokemon.name);
                             let player2_choice = player2_pokemon.choose_attack();
                             if dodge_chance == 0 {
                                 println!("Player's 1 {} blocked it !!!", player1_pokemon.name);
                             } else {
-                                let critical_chance = rng.gen_range(0, 8);
+                                let critical_chance = rng.gen_range(0..8);
                                 println!(
                                     "\nPlayer 2 uses {}",
                                     player2_pokemon.moves_name[player2_choice - 1]
@@ -408,13 +408,13 @@ fn game_play() {
                 println!("Player 2 attacks first !!!");
 
                 loop {
-                    let dodge_chance = rng.gen_range(0, 8);
+                    let dodge_chance = rng.gen_range(0..8);
                     println!("\nPlayers's 2 {} attacks now !!!", player2_pokemon.name);
                     let player2_choice = player2_pokemon.choose_attack();
                     if dodge_chance == 0 {
                         println!("Player's 1 {} blocked it !!!", player1_pokemon.name);
                     } else {
-                        let critical_chance = rng.gen_range(0, 9);
+                        let critical_chance = rng.gen_range(0..9);
                         println!(
                             "\nPlayer 2 uses {}",
                             player2_pokemon.moves_name[player2_choice - 1]
@@ -434,13 +434,13 @@ fn game_play() {
                                 game_play();
                             }
                         } else {
-                            let dodge_chance = rng.gen_range(0, 9);
+                            let dodge_chance = rng.gen_range(0..9);
                             let player1_choice = player1_pokemon.choose_attack();
 
                             if dodge_chance == 0 {
                                 println!("Player's 2 {} blocked it !!!", player2_pokemon.name);
                             } else {
-                                let critical_chance = rng.gen_range(0, 8);
+                                let critical_chance = rng.gen_range(0..8);
 
                                 println!(
                                     "\nPlayer 1 uses {}",
