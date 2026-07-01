@@ -488,8 +488,8 @@ fn game_play() {
 
 fn main() {
     println!("Loading game .....");
-    let device = rodio::default_output_device().unwrap();
-    let sink = rodio::Sink::new(&device);
+    let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
+    let sink = rodio::Sink::try_new(&stream_handle).unwrap();
 
     let song_file = File::open("resources/track.mp3").unwrap();
     sink.append(rodio::Decoder::new(BufReader::new(song_file)).unwrap());
